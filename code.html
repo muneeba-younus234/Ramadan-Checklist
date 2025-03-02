@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracker & Quran Checklist</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@400;500&display=swap');
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            text-align: center;
+            background-color: #fff5fa;
+            color: #4a154b;
+            padding: 10px;
+        }
+        h2 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 36px;
+            color: #d63384;
+        }
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            position: relative;
+        }
+        table {
+            width: max-content;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #f8c1d1;
+            padding: 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        th {
+            background-color: #f8c1d1;
+            color: #4a154b;
+            font-size: 16px;
+        }
+        td input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        canvas {
+            width: 100% !important;
+            height: 250px !important;
+        }
+        th:first-child, td:first-child {
+            position: sticky;
+            left: 0;
+            background: #f8c1d1;
+            z-index: 2;
+        }
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #d63384;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f8c1d1;
+        }
+        .nav-buttons {
+            margin-bottom: 20px;
+        }
+        .nav-buttons button {
+            background-color: #d63384;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .nav-buttons button:hover {
+            background-color: #b02a6b;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        @media screen and (max-width: 600px) {
+            h2 {
+                font-size: 28px;
+            }
+            th, td {
+                padding: 5px;
+                font-size: 12px;
+            }
+            td input[type="checkbox"] {
+                transform: scale(1);
+            }
+            .table-container {
+                overflow-x: scroll;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-buttons">
+        <button onclick="showPage('habitTracker')">Habit Tracker</button>
+        <button onclick="showPage('quranChecklist')">Quran Checklist</button>
+    </div>
+
+    <!-- Habit Tracker Page -->
+    <div id="habitTracker" class="page active">
+        <h2 id="monthTitle">Habit Tracker</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Habit</th>
+                        <script>
+                            document.write([...Array(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate())].map((_, i) => `<th>${i + 1}</th>`).join(''));
+                        </script>
+                    </tr>
+                </thead>
+                <tbody id="habitTable"></tbody>
+            </table>
+        </div>
+        <div class="chart-container">
+            <canvas id="habitChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Quran Checklist Page -->
+    <div id="quranChecklist" class="page">
+        <h2>Quran Checklist</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Surahs to Read</th>
+                        <th>Para (Juz) Range</th>
+                        <th>Recited</th>
+                        <th>Tafseer</th>
+                    </tr>
+                </thead>
+                <tbody id="quranTableBody">
+                    <!-- Rows will be dynamically added here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Habit Tracker Code
+        const habits = ["Tahajjud", "Salat e Hajat", "Fajar", "Zuhar", "Asar", "Magrib", "Isha", "Surah Yaseen", "Surah Fajar", "Surah Rehman", "Surah Waqiya", "Surah Muzammil", "Surah Mulk", "Surah Kahf", "Duroor Shareef", "Astagfar", "Allahu akbar", "SubhanAllah", "Alhamdulillah"];
+        const tbody = document.getElementById("habitTable");
+        const habitStorageKey = `habitTracker_${new Date().getFullYear()}_${new Date().getMonth() + 1}`;
+        
+        function saveHabitProgress() {
+            let progress = {};
+            document.querySelectorAll("#habitTable tr").forEach((row, rowIndex) => {
+                progress[rowIndex] = [];
+                row.querySelectorAll("input[type='checkbox']").forEach((checkbox, colIndex) => {
+                    progress[rowIndex][colIndex] = checkbox.checked;
+                });
+            });
+            localStorage.setItem(habitStorageKey, JSON.stringify(progress));
+        }
+        
+        function loadHabitProgress() {
+            let savedProgress = localStorage.getItem(habitStorageKey);
+            if (savedProgress) {
+                savedProgress = JSON.parse(savedProgress);
+                document.querySelectorAll("#habitTable tr").forEach((row, rowIndex) => {
+                    row.querySelectorAll("input[type='checkbox']").forEach((checkbox, colIndex) => {
+                        checkbox.checked = savedProgress[rowIndex]?.[colIndex] || false;
+                    });
+                });
+            }
+        }
+        
+        habits.forEach((habit, rowIndex) => {
+            let row = document.createElement("tr");
+            let habitCell = document.createElement("td");
+            habitCell.textContent = habit;
+            row.appendChild(habitCell);
+            
+            for (let i = 1; i <= new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); i++) {
+                let cell = document.createElement("td");
+                let checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.addEventListener("change", saveHabitProgress);
+                cell.appendChild(checkbox);
+                row.appendChild(cell);
+            }
+            tbody.appendChild(row);
+        });
+        
+        loadHabitProgress();
+        
+        function updateChart() {
+            let ctx = document.getElementById("habitChart").getContext("2d");
+            let habitCounts = Array(new Date().getDate()).fill(0);
+            document.querySelectorAll("#habitTable tr").forEach(row => {
+                row.querySelectorAll("input[type='checkbox']").forEach((checkbox, index) => {
+                    if (checkbox.checked) {
+                        habitCounts[index]++;
+                    }
+                });
+            });
+            if (window.habitChartInstance) window.habitChartInstance.destroy();
+            window.habitChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: new Date().getDate() }, (_, i) => i + 1),
+                    datasets: [{
+                        label: "Completed Habits Per Day",
+                        data: habitCounts,
+                        borderColor: "#d63384",
+                        backgroundColor: "rgba(214, 51, 132, 0.2)",
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: "Days of Month" } },
+                        y: { beginAtZero: true, suggestedMax: 20, title: { display: true, text: "No of Habits Completed" } }
+                    }
+                }
+            });
+        }
+        
+        updateChart();
+
+        // Quran Checklist Code
+        const quranChecklistData = [
+            { day: 1, surahs: "Surah Al-Fatiha (1) + Surah Al-Baqarah (2)", para: "1 - 3" },
+            { day: 2, surahs: "Surah Aal-e-Imran (3)", para: "3 - 4" },
+            { day: 3, surahs: "Surah An-Nisa (4)", para: "4 - 6" },
+            { day: 4, surahs: "Surah Al-Ma’idah (5)", para: "6 - 7" },
+            { day: 5, surahs: "Surah Al-An’am (6)", para: "7 - 8" },
+            { day: 6, surahs: "Surah Al-A’raf (7)", para: "8 - 9" },
+            { day: 7, surahs: "Surah Al-Anfal (8) + Surah At-Tawbah (9)", para: "9 - 11" },
+            { day: 8, surahs: "Surah Yunus (10) + Surah Hud (11)", para: "11 - 12" },
+            { day: 9, surahs: "Surah Yusuf (12) + Surah Ar-Ra’d (13)", para: "12 - 13" },
+            { day: 10, surahs: "Surah Ibrahim (14) + Surah Al-Hijr (15)", para: "13 - 14" },
+            { day: 11, surahs: "Surah An-Nahl (16)", para: "14" },
+            { day: 12, surahs: "Surah Al-Isra (17) + Surah Al-Kahf (18)", para: "15" },
+            { day: 13, surahs: "Surah Maryam (19) + Surah Ta-Ha (20)", para: "16" },
+            { day: 14, surahs: "Surah Al-Anbiya (21) + Surah Al-Hajj (22)", para: "17" },
+            { day: 15, surahs: "Surah Al-Mu’minun (23) + Surah An-Nur (24)", para: "18" },
+            { day: 16, surahs: "Surah Al-Furqan (25) + Surah Ash-Shu’ara (26)", para: "18 - 19" },
+            { day: 17, surahs: "Surah An-Naml (27) + Surah Al-Qasas (28)", para: "19 - 20" },
+            { day: 18, surahs: "Surah Al-Ankabut (29) + Surah Ar-Rum (30) + Surah Luqman (31)", para: "20 - 21" },
+            { day: 19, surahs: "Surah As-Sajdah (32) + Surah Al-Ahzab (33)", para: "21 - 22" },
+            { day: 20, surahs: "Surah Saba (34) + Surah Fatir (35) + Surah Ya-Sin (36)", para: "22 - 23" },
+            { day: 21, surahs: "Surah As-Saffat (37) + Surah Sad (38) + Surah Az-Zumar (39)", para: "23 - 24" },
+            { day: 22, surahs: "Surah Ghafir (40) + Surah Fussilat (41)", para: "24 - 25" },
+            { day: 23, surahs: "Surah Ash-Shura (42) + Surah Az-Zukhruf (43) + Surah Ad-Dukhan (44)", para: "25" },
+            { day: 24, surahs: "Surah Al-Jathiyah (45) + Surah Al-Ahqaf (46) + Surah Muhammad (47)", para: "25 - 26" },
+            { day: 25, surahs: "Surah Al-Fath (48) + Surah Al-Hujurat (49) + Surah Qaf (50) + Surah Adh-Dhariyat (51)", para: "26 - 27" },
+            { day: 26, surahs: "Surah At-Tur (52) to Surah Al-Hadid (57)", para: "27 - 28" },
+            { day: 27, surahs: "Surah Al-Mujadila (58) to Surah At-Tahrim (66)", para: "28" },
+            { day: 28, surahs: "Surah Al-Mulk (67) to Surah Al-Mursalat (77)", para: "29" },
+            { day: 29, surahs: "Surah An-Naba (78) to Surah An-Nas (114)", para: "30" },
+        ];
+
+        const quranTableBody = document.getElementById("quranTableBody");
+        const quranStorageKey = `quranChecklist_${new Date().getFullYear()}_${new Date().getMonth() + 1}`;
+
+        function saveQuranProgress() {
+            let progress = {};
+            document.querySelectorAll("#quranTableBody tr").forEach((row, rowIndex) => {
+                progress[rowIndex] = {
+                    recited: row.querySelector("td:nth-child(4) input").checked,
+                    tafseer: row.querySelector("td:nth-child(5) input").checked,
+                };
+            });
+            localStorage.setItem(quranStorageKey, JSON.stringify(progress));
+        }
+
+        function loadQuranProgress() {
+            let savedProgress = localStorage.getItem(quranStorageKey);
+            if (savedProgress) {
+                savedProgress = JSON.parse(savedProgress);
+                document.querySelectorAll("#quranTableBody tr").forEach((row, rowIndex) => {
+                    if (savedProgress[rowIndex]) {
+                        row.querySelector("td:nth-child(4) input").checked = savedProgress[rowIndex].recited;
+                        row.querySelector("td:nth-child(5) input").checked = savedProgress[rowIndex].tafseer;
+                    }
+                });
+            }
+        }
+
+        function generateQuranChecklist() {
+            quranChecklistData.forEach((item, rowIndex) => {
+                const row = document.createElement("tr");
+
+                // Day
+                const dayCell = document.createElement("td");
+                dayCell.textContent = `Day ${item.day}`;
+                row.appendChild(dayCell);
+
+                // Surahs to Read
+                const surahsCell = document.createElement("td");
+                surahsCell.textContent = item.surahs;
+                row.appendChild(surahsCell);
+
+                // Para (Juz) Range
+                const paraCell = document.createElement("td");
+                paraCell.textContent = item.para;
+                row.appendChild(paraCell);
+
+                // Recited Checkbox
+                const recitedCell = document.createElement("td");
+                const recitedCheckbox = document.createElement("input");
+                recitedCheckbox.type = "checkbox";
+                recitedCheckbox.addEventListener("change", saveQuranProgress);
+                recitedCell.appendChild(recitedCheckbox);
+                row.appendChild(recitedCell);
+
+                // Tafseer Checkbox
+                const tafseerCell = document.createElement("td");
+                const tafseerCheckbox = document.createElement("input");
+                tafseerCheckbox.type = "checkbox";
+                tafseerCheckbox.addEventListener("change", saveQuranProgress);
+                tafseerCell.appendChild(tafseerCheckbox);
+                row.appendChild(tafseerCell);
+
+                quranTableBody.appendChild(row);
+            });
+        }
+
+        // Generate Quran Checklist on page load
+        generateQuranChecklist();
+        loadQuranProgress();
+
+        // Function to switch between pages
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
