@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Habit Tracker & Quran Checklist</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@400;500&display=swap');
 
@@ -42,16 +41,6 @@
         }
         td input[type="checkbox"] {
             transform: scale(1.2);
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-        canvas {
-            width: 100% !important;
-            height: 250px !important;
         }
         th:first-child, td:first-child {
             position: sticky;
@@ -129,9 +118,6 @@
                 <tbody id="habitTable"></tbody>
             </table>
         </div>
-        <div class="chart-container">
-            <canvas id="habitChart"></canvas>
-        </div>
     </div>
 
     <!-- Quran Checklist Page -->
@@ -202,44 +188,6 @@
         });
         
         loadHabitProgress();
-        
-        function updateChart() {
-            let ctx = document.getElementById("habitChart").getContext("2d");
-            let habitCounts = Array(new Date().getDate()).fill(0);
-            document.querySelectorAll("#habitTable tr").forEach(row => {
-                row.querySelectorAll("input[type='checkbox']").forEach((checkbox, index) => {
-                    if (checkbox.checked) {
-                        habitCounts[index]++;
-                    }
-                });
-            });
-            if (window.habitChartInstance) window.habitChartInstance.destroy();
-            window.habitChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({ length: new Date().getDate() }, (_, i) => i + 1),
-                    datasets: [{
-                        label: "Completed Habits Per Day",
-                        data: habitCounts,
-                        borderColor: "#d63384",
-                        backgroundColor: "rgba(214, 51, 132, 0.2)",
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        fill: true,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { title: { display: true, text: "Days of Month" } },
-                        y: { beginAtZero: true, suggestedMax: 20, title: { display: true, text: "No of Habits Completed" } }
-                    }
-                }
-            });
-        }
-        
-        updateChart();
 
         // Quran Checklist Code
         const quranChecklistData = [
